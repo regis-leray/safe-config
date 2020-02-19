@@ -4,19 +4,18 @@ import scala.util.Try
 import scala.collection.JavaConverters._
 
 object SafeConfig {
-  sealed trait Arrow[F[_]] {
-    def apply[T](t: Try[T]): F[T]
+  sealed trait FunctionK[F[_], G[_]] {
+    def apply[A](fa: F[A]): G[A]
   }
 
-  implicit val arrowOption: Arrow[Option] = new Arrow[Option] {
-    override def apply[T](t: Try[T]): Option[T] = {
+  implicit val functionKOption = new FunctionK[Try, Option] {
+    override def apply[T](t: Try[T]): scala.Option[T] = {
       t.toOption
     }
   }
-
   type ErrorOf[T] = Either[Throwable, T]
 
-  implicit val arrowEither: Arrow[ErrorOf] = new Arrow[ErrorOf] {
+  implicit val functionKEither = new FunctionK[Try, ErrorOf] {
     override def apply[T](t: Try[T]): ErrorOf[T] = {
       t.toEither
     }
@@ -42,7 +41,7 @@ object SafeConfig {
     override def get(c: Config, path: String): Try[List[String]] = Try(c.getStringList(path).asScala.toList)
   }
 
-  def get[F[_], T](config: Config, path: String)(implicit arrow: Arrow[F], g: Get[T]): F[T] =
+  def get[F[_], T](config: Config, path: String)(implicit arrow: FunctionK[Try, F], g: Get[T]): F[T] =
     arrow(g.get(config, path))
 }
 
